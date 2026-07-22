@@ -1,0 +1,10 @@
+name = "c1-bot"
+main = "src/index.ts"
+compatibility_date = "2026-07-17"
+
+# No fetch handler — `scheduled` is the only entrypoint, so a workers.dev route
+# would serve nothing. Without this, every deploy prompts to register a subdomain.
+workers_dev = false
+
+[triggers]
+crons = ["*/15 6-11 * * *"]

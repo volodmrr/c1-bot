@@ -1,0 +1,19 @@
+{
+  "messageId": 2089,
+  "postedAt": "2026-02-17T08:04:49+00:00",
+  "status": "parsed",
+  "rates": [
+    {
+      "currency": "USDT",
+      "quoteCurrency": "USD",
+      "buy": 1.011,
+      "sell": 1.014
+    },
+    {
+      "currency": "USD",
+      "quoteCurrency": "UAH",
+      "buy": 43.15,
+      "sell": 43.25
+    }
+  ]
+}

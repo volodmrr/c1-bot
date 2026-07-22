@@ -1,0 +1,9 @@
+node_modules/
+.dev.vars
+.wrangler/
+input/
+output/
+site/data.json
+.DS_Store
+docs/
+.superpowers/

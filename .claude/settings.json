@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.dev.vars)",
+      "Write(.dev.vars)"
+    ]
+  }
+}

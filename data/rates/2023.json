@@ -1,0 +1,19 @@
+{
+  "messageId": 2023,
+  "postedAt": "2025-12-18T07:58:06+00:00",
+  "status": "parsed",
+  "rates": [
+    {
+      "currency": "USDT",
+      "quoteCurrency": "USD",
+      "buy": 1.0145,
+      "sell": 1.018
+    },
+    {
+      "currency": "USD",
+      "quoteCurrency": "UAH",
+      "buy": 42.23,
+      "sell": 42.33
+    }
+  ]
+}

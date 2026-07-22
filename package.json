@@ -1,0 +1,16 @@
+{
+  "name": "c1-bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "convert": "node scripts/convert.mjs",
+    "build:site": "node scripts/build-site.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260715.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.111.0"
+  }
+}
