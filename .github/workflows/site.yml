@@ -6,7 +6,7 @@ on:
     paths:
       - "data/rates/**"
       - "scripts/build-site.mjs"
-      - "site/index.html"
+      - "docs/index.html"
       - ".github/workflows/site.yml"
   workflow_dispatch:
 
@@ -35,6 +35,6 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs
       - id: deploy
         uses: actions/deploy-pages@v4

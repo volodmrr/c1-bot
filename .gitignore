@@ -3,7 +3,7 @@ node_modules/
 .wrangler/
 input/
 output/
-site/data.json
+docs/*
+!docs/index.html
 .DS_Store
-docs/
 .superpowers/

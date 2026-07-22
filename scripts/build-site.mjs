@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const RATES_DIR = join(ROOT, "data/rates");
-const OUT = join(ROOT, "site/data.json");
+const OUT = join(ROOT, "docs/data.json");
 
 const KYIV_DATE = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
