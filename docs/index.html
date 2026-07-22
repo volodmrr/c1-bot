@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>FX rates calendar</title>
 <style>
   :root {
@@ -18,137 +18,249 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 1.5rem 1rem; background: var(--bg); color: var(--fg);
+    touch-action: manipulation; -webkit-text-size-adjust: 100%;
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex; flex-direction: column; align-items: center;
   }
   header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-  h1 { font-size: 1.05rem; font-weight: 600; margin: 0; min-width: 9rem; text-align: center; }
+  h1 {
+    font-size: 1.05rem; font-weight: 600; margin: 0; min-width: 9rem; text-align: center;
+    cursor: pointer; border-radius: 8px; padding: .15rem .4rem;
+  }
+  h1:hover { color: var(--accent); }
   button {
     background: var(--cell); color: var(--fg); border: 1px solid var(--line);
     border-radius: 8px; width: 2.2rem; height: 2.2rem; font-size: 1.1rem; cursor: pointer;
   }
   button:hover { border-color: var(--accent); }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; max-width: 640px; }
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 640px; }
   .dow { text-align: center; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   .cell {
     background: var(--cell); border: 1px solid var(--line); border-radius: 10px;
     aspect-ratio: 1; padding: .35rem .4rem; display: flex; flex-direction: column;
-    position: relative; overflow: visible;
+    min-width: 0;
   }
-  .cell.empty { background: transparent; border: none; }
   .cell .day { font-size: .78rem; color: var(--muted); }
   .cell.has .day { color: var(--fg); }
-  .cell .rates { margin-top: auto; display: flex; flex-direction: column; gap: 1px; }
+  .cell .rates { margin-top: auto; display: flex; flex-direction: column; gap: 1px; container-type: inline-size; overflow: hidden; }
   .cell .rate {
     display: flex; justify-content: space-between; align-items: baseline; gap: .25rem;
     font-size: .8rem; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums;
   }
-  .cell .rate b { font-weight: 500; font-size: .62rem; color: var(--muted); letter-spacing: .03em; }
+  .cell .rate b { font-weight: 500; font-size: .74rem; color: var(--muted); }
   .cell.has { cursor: pointer; }
-  .cell.has:hover { border-color: var(--accent); }
-  .pop {
-    display: none; position: absolute; z-index: 5; bottom: calc(100% + 6px); left: 50%;
-    transform: translateX(-50%); background: var(--cell); border: 1px solid var(--line);
-    border-radius: 10px; padding: .6rem .75rem; box-shadow: 0 6px 20px var(--shadow);
-    white-space: nowrap; font-size: .82rem;
+  @media (hover: hover) {
+    .cell.has:hover { border-color: var(--accent); }
+    .cell.has:hover .pop { display: block; }
   }
-  .cell.has:hover .pop, .cell.open .pop { display: block; }
+  .cell.open { border-color: var(--accent); }
+  .pop {
+    display: none; position: fixed; z-index: 5; bottom: 1.25rem; left: 50%;
+    transform: translateX(-50%); background: var(--cell); border: 1px solid var(--line);
+    border-radius: 12px; padding: .7rem .9rem; box-shadow: 0 6px 24px var(--shadow);
+    white-space: nowrap; font-size: .88rem;
+  }
+  .cell.open .pop { display: block; }
   .pop table { border-collapse: collapse; }
+  .pop-day {
+    font-size: .75rem; color: var(--muted); margin-bottom: .35rem;
+    padding-bottom: .3rem; border-bottom: 1px solid var(--line);
+  }
   .pop td { padding: .1rem .5rem; }
   .pop td:first-child { color: var(--muted); text-align: left; }
   .pop td { text-align: right; font-variant-numeric: tabular-nums; }
-  footer { margin-top: 1.2rem; color: var(--muted); font-size: .75rem; }
+  footer { margin-top: 1.2rem; color: var(--muted); font-size: .75rem; text-align: center; max-width: 640px; }
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 9; }
+  .picker {
+    position: fixed; z-index: 10; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(21rem, calc(100vw - 2rem)); background: var(--cell);
+    border: 1px solid var(--line); border-radius: 14px; padding: .9rem;
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+  .picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .7rem; }
+  .picker-head span { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .picker-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+  .picker-grid button { width: auto; height: 2.4rem; font-size: .8rem; border-radius: 8px; color: var(--muted); }
+  .picker-grid button.has { color: var(--fg); font-weight: 600; }
+  .picker-grid button.cur { border-color: var(--accent); color: var(--accent); }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 560px) {
+    body { padding: 1rem .5rem; }
+    header { gap: .5rem; margin-bottom: .75rem; }
+    .grid { gap: 4px; }
+    .dow { font-size: .6rem; letter-spacing: 0; }
+    .cell { aspect-ratio: auto; min-height: 3.5rem; padding: .2rem .18rem; border-radius: 8px; }
+    .cell .day { font-size: .68rem; }
+    /* Type scales to the cell, which is far narrower than the viewport. */
+    .cell .rate { font-size: clamp(.5rem, 24cqw, .78rem); gap: .08rem; }
+    .cell .rate b { font-size: clamp(.48rem, 22cqw, .72rem); }
+    /* Both overlays become bottom sheets. */
+    .pop, .picker {
+      inset: auto 0 0 0; transform: none; width: auto;
+      border-radius: 14px 14px 0 0; border-width: 1px 0 0;
+      box-shadow: 0 -6px 24px var(--shadow);
+    }
+    .picker { padding-bottom: calc(.9rem + env(safe-area-inset-bottom)); }
+    .pop { font-size: .95rem; padding: .9rem 1.1rem calc(.9rem + env(safe-area-inset-bottom)); }
+    .pop table { width: 100%; }
+    .pop td { padding: .25rem .5rem; }
+    .picker-grid button { height: 2.8rem; }
+    footer { margin-top: 1rem; }
+  }
 </style>
 </head>
 <body>
 <header>
   <button id="prev" aria-label="Previous month">‹</button>
-  <h1 id="title">—</h1>
+  <h1 id="title" role="button" tabindex="0" aria-label="Pick a month">—</h1>
   <button id="next" aria-label="Next month">›</button>
 </header>
+<div class="backdrop" id="backdrop" hidden></div>
+<div class="picker" id="picker" hidden>
+  <div class="picker-head">
+    <button id="yprev" aria-label="Previous year">‹</button>
+    <span id="pyear"></span>
+    <button id="ynext" aria-label="Next year">›</button>
+  </div>
+  <div class="picker-grid" id="pgrid"></div>
+</div>
 <div class="grid" id="dows"></div>
 <div class="grid" id="cal" style="margin-top:6px"></div>
-<footer>cells show sell rate in UAH · popup shows buy / sell · times in Europe/Kyiv</footer>
+<footer>$ USD · ₮ USDT · cells show sell rate in UAH · popup shows buy / sell · times in Europe/Kyiv</footer>
 
 <script>
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const fmt = (n, dp) => n == null ? "—" : n.toFixed(dp);
+const $ = (id) => document.getElementById(id);
+
+const elTitle = $("title"), elCal = $("cal"), elPicker = $("picker"),
+      elBackdrop = $("backdrop"), elPgrid = $("pgrid"), elPyear = $("pyear");
 
 let data = {};
+let monthsByYear = new Map(); // year -> Set of month indexes with data
 let view; // {y, m}
-
-function keysSorted() { return Object.keys(data).sort(); }
+let openCell = null;
 
 function render() {
-  document.getElementById("title").textContent = `${MONTHS[view.m]} ${view.y}`;
-  const cal = document.getElementById("cal");
-  cal.innerHTML = "";
+  elTitle.textContent = `${MONTHS[view.m]} ${view.y}`;
+  openCell = null;
 
   const first = new Date(Date.UTC(view.y, view.m, 1));
   const lead = (first.getUTCDay() + 6) % 7; // Mon-based
   const days = new Date(Date.UTC(view.y, view.m + 1, 0)).getUTCDate();
 
-  for (let i = 0; i < lead; i++) cal.appendChild(cell());
+  const frag = document.createDocumentFragment();
   for (let d = 1; d <= days; d++) {
     const key = `${view.y}-${String(view.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    cal.appendChild(cell(d, data[key]));
+    const el = cell(d, data[key]);
+    if (d === 1) el.style.gridColumnStart = lead + 1;
+    frag.appendChild(el);
   }
+  elCal.replaceChildren(frag);
 }
+
+const rate = (sym, r) =>
+  r ? `<span class="rate"><b>${sym}</b>${fmt(r.sell, 2)}</span>` : "";
 
 function cell(day, rec) {
   const el = document.createElement("div");
-  el.className = "cell" + (day == null ? " empty" : "") + (rec ? " has" : "");
-  if (day == null) return el;
-
-  el.innerHTML = `<span class="day">${day}</span>`;
-  if (rec) {
-    const line = (label, r) =>
-      r ? `<span class="rate"><b>${label}</b>${fmt(r.sell, 2)}</span>` : "";
-    el.insertAdjacentHTML(
-      "beforeend",
-      `<div class="rates">${line("USD", rec.usdUah)}${line("USDT", rec.usdtUah)}</div>`
-    );
-    el.insertAdjacentHTML("beforeend", popup(rec));
-    el.addEventListener("click", () => el.classList.toggle("open"));
-  }
+  el.className = rec ? "cell has" : "cell";
+  el.innerHTML = `<span class="day">${day}</span>` + (rec
+    ? `<div class="rates">${rate("$", rec.usdUah)}${rate("₮", rec.usdtUah)}</div>` + popup(rec, day)
+    : "");
   return el;
+}
+
+function closePopups() {
+  if (openCell) { openCell.classList.remove("open"); openCell = null; }
 }
 
 function row(label, r, dp) {
   return r ? `<tr><td>${label}</td><td>${fmt(r.buy, dp)}</td><td>${fmt(r.sell, dp)}</td></tr>` : "";
 }
 
-function popup(rec) {
-  return `<div class="pop"><table>
+function popup(rec, day) {
+  return `<div class="pop"><div class="pop-day">${day} ${MONTHS[view.m]} ${view.y}</div><table>
     ${row("USD/UAH", rec.usdUah, 2)}
     ${row("USDT/USD", rec.usdtUsd, 3)}
     ${row("USDT/UAH", rec.usdtUah, 2)}
   </table></div>`;
 }
 
+let pickerYear;
+let pickerOpen = false;
+
+function renderPicker() {
+  elPyear.textContent = pickerYear;
+  const has = monthsByYear.get(pickerYear) ?? new Set();
+  elPgrid.innerHTML = MONTHS.map((m, i) => {
+    const cls = (has.has(i) ? " has" : "") + (pickerYear === view.y && i === view.m ? " cur" : "");
+    return `<button class="${cls.trim()}" data-m="${i}">${m.slice(0, 3)}</button>`;
+  }).join("");
+}
+
+function togglePicker(open) {
+  pickerOpen = open;
+  elPicker.hidden = !open;
+  elBackdrop.hidden = !open;
+  if (open) { closePopups(); pickerYear = view.y; renderPicker(); }
+}
+
 function step(delta) {
+  closePopups();
   let m = view.m + delta, y = view.y;
   if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
   view = { y, m };
   render();
 }
 
-document.getElementById("prev").onclick = () => step(-1);
-document.getElementById("next").onclick = () => step(1);
-document.getElementById("dows").innerHTML = DOW.map((d) => `<div class="dow">${d}</div>`).join("");
+document.addEventListener("click", closePopups);
+elCal.onclick = (e) => {
+  const el = e.target.closest(".cell.has");
+  if (!el) return;
+  e.stopPropagation();
+  const wasOpen = el === openCell;
+  closePopups();
+  if (!wasOpen) { el.classList.add("open"); openCell = el; }
+};
+$("prev").onclick = () => step(-1);
+$("next").onclick = () => step(1);
+
+elTitle.onclick = (e) => { e.stopPropagation(); togglePicker(!pickerOpen); };
+elTitle.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elTitle.onclick(e); } };
+elBackdrop.onclick = () => togglePicker(false);
+elPicker.onclick = (e) => e.stopPropagation();
+$("yprev").onclick = () => { pickerYear--; renderPicker(); };
+$("ynext").onclick = () => { pickerYear++; renderPicker(); };
+elPgrid.onclick = (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  view = { y: pickerYear, m: +b.dataset.m };
+  togglePicker(false);
+  render();
+};
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") togglePicker(false); });
+$("dows").innerHTML = DOW.map((d) => `<div class="dow">${d}</div>`).join("");
 
 fetch("data.json")
   .then((r) => r.json())
   .then((d) => {
     data = d;
-    const keys = keysSorted();
+    const keys = Object.keys(data).sort();
+    for (const k of keys) {
+      const y = +k.slice(0, 4);
+      let set = monthsByYear.get(y);
+      if (!set) monthsByYear.set(y, set = new Set());
+      set.add(+k.slice(5, 7) - 1);
+    }
     const last = keys.length ? keys[keys.length - 1] : new Date().toISOString().slice(0, 10);
     const [y, m] = last.split("-").map(Number);
     view = { y, m: m - 1 };
     render();
   })
-  .catch(() => { document.getElementById("title").textContent = "no data"; });
+  .catch(() => { elTitle.textContent = "no data"; });
 </script>
 </body>
 </html>
