@@ -5,17 +5,13 @@ import { alert, notify } from './notify'
 import { kyivDate } from './date'
 import type { Env, ScrapedMessage, StoredMessage } from './types'
 
-const BATCH_CAP = 20
-
-const ANTHROPIC_AUTH_ALERT = 'ANTHROPIC_API_KEY error'
-
-const GITHUB_AUTH_ALERT = 'GITHUB_TOKEN error'
+const BATCH_CAP = 10
 
 export async function run(env: Env): Promise<void> {
   try {
     await runBatch(env)
   } catch (error) {
-    if (error instanceof GitHubAuthError) await alert(env, `${error.message}\n\n${GITHUB_AUTH_ALERT}`)
+    if (error instanceof GitHubAuthError) await alert(env, 'GITHUB_TOKEN error')
     throw error
   }
 }
@@ -23,7 +19,6 @@ export async function run(env: Env): Promise<void> {
 async function runBatch(env: Env): Promise<void> {
   const { lastId, lastParsedDate, sha } = await getState(env)
 
-  // Once today's post is parsed, skip the whole run until the Kyiv date rolls over.
   if (lastParsedDate === kyivDate()) return
 
   let messages: ScrapedMessage[]
@@ -58,7 +53,7 @@ async function runBatch(env: Env): Promise<void> {
       }
     } catch (error) {
       if (error instanceof AnthropicAuthError) {
-        await alert(env, ANTHROPIC_AUTH_ALERT)
+        await alert(env, 'ANTHROPIC_API_KEY error')
         throw error
       }
       // Transient: stop here. Successes so far still commit; this id retries next tick.
