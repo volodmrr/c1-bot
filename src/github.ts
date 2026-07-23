@@ -15,17 +15,26 @@ export class ConflictError extends Error {
   }
 }
 
-// 401 = expired/revoked token: the run's problem, not the message's. Bubble up so the
-// loop stops and alerts instead of writing anything off. (403 is rate-limit, not auth.)
+// The token's problem, not the message's. Bubble up so the loop stops and alerts
+// instead of writing anything off.
 export class GitHubAuthError extends Error {
   constructor(status: number) {
-    super(`GitHub rejected the token (HTTP ${status}) — likely expired`)
+    super(
+      status === 401
+        ? 'GitHub rejected the token (HTTP 401) — likely expired or revoked'
+        : 'GitHub rejected the request (HTTP 403) — the token lacks the required permission',
+    )
     this.name = 'GitHubAuthError'
   }
 }
 
-function assertNotExpired(status: number): void {
-  if (status === 401) throw new GitHubAuthError(status)
+// 403 is overloaded: a real rate limit zeroes x-ratelimit-remaining, anything else is
+// a missing permission. Only the latter is worth alerting on.
+function assertTokenUsable(response: Response): void {
+  if (response.status === 401) throw new GitHubAuthError(401)
+  if (response.status === 403 && response.headers.get('x-ratelimit-remaining') !== '0') {
+    throw new GitHubAuthError(403)
+  }
 }
 
 function headers(env: Env): Record<string, string> {
@@ -63,7 +72,7 @@ export async function getState(env: Env): Promise<State> {
     headers: headers(env),
   })
   if (!response.ok) {
-    assertNotExpired(response.status)
+    assertTokenUsable(response)
     throw new Error(`GitHub GET ${STATE_PATH} returned ${response.status}: ${await response.text()}`)
   }
   const body = (await response.json()) as { content: string; sha: string }
@@ -84,7 +93,7 @@ export async function putState(env: Env, lastId: number, lastParsedDate: string,
   })
   if (response.status === 409) throw new ConflictError()
   if (!response.ok) {
-    assertNotExpired(response.status)
+    assertTokenUsable(response)
     throw new Error(`GitHub PUT ${STATE_PATH} returned ${response.status}: ${await response.text()}`)
   }
 }
@@ -106,7 +115,7 @@ export async function putRateFile(env: Env, message: StoredMessage): Promise<voi
       headers: headers(env),
     })
     if (!existing.ok) {
-      assertNotExpired(existing.status)
+      assertTokenUsable(existing)
       throw new Error(`GitHub GET ${path} (for sha) returned ${existing.status}`)
     }
     const sha = ((await existing.json()) as { sha: string }).sha
@@ -118,7 +127,7 @@ export async function putRateFile(env: Env, message: StoredMessage): Promise<voi
   }
 
   if (!response.ok) {
-    assertNotExpired(response.status)
+    assertTokenUsable(response)
     throw new Error(`GitHub PUT ${path} returned ${response.status}: ${await response.text()}`)
   }
 }

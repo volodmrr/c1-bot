@@ -7,23 +7,15 @@ import type { Env, ScrapedMessage, StoredMessage } from './types'
 
 const BATCH_CAP = 20
 
-const ANTHROPIC_AUTH_ALERT =
-  'Anthropic rejected the API key — the bot stopped this run here.\n\n' +
-  'The watermark was not advanced, so every message from this point retries next ' +
-  'tick once the key works (anything already committed earlier in the batch is ' +
-  're-committed identically).\n\n' +
-  'Fix with: wrangler secret put ANTHROPIC_API_KEY'
+const ANTHROPIC_AUTH_ALERT = 'ANTHROPIC_API_KEY error'
 
-const GITHUB_AUTH_ALERT =
-  'GitHub rejected the token — likely expired. The bot cannot read or write state, ' +
-  'so this run and every run after it fails until the token is replaced.\n\n' +
-  'Fix with: wrangler secret put GITHUB_TOKEN'
+const GITHUB_AUTH_ALERT = 'GITHUB_TOKEN error'
 
 export async function run(env: Env): Promise<void> {
   try {
     await runBatch(env)
   } catch (error) {
-    if (error instanceof GitHubAuthError) await alert(env, GITHUB_AUTH_ALERT)
+    if (error instanceof GitHubAuthError) await alert(env, `${error.message}\n\n${GITHUB_AUTH_ALERT}`)
     throw error
   }
 }
