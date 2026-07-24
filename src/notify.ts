@@ -1,38 +1,29 @@
-import type { Env, ParsedRate, StoredMessage } from './types'
+import type { Env, StoredMessage } from './types'
 import { messageUrl } from './channel'
 import { kyivDate } from './date'
 
-function pair(rate: ParsedRate): string {
-  return `${rate.currency}/${rate.quoteCurrency}`
-}
+const SYM: Record<string, string> = { USD: '$', UAH: '₴', USDT: '₮' }
 
-function formatRate(rate: ParsedRate): string {
-  // USDT is a USD multiplier (1.004 = +0.4%): needs 3dp or the margin rounds away; USD keeps 2.
-  const dp = rate.currency === 'USDT' ? 3 : 2
-  const buy = rate.buy.toFixed(dp)
-  const sell = rate.sell.toFixed(dp)
-  const shownSell = rate.quoteCurrency === 'UAH' ? `<b>${sell}</b>` : sell
-  return `${pair(rate)} ${buy} / ${shownSell}`
-}
-
-function usdtInHryvnia(rates: ParsedRate[]): string | null {
-  const usd = rates.find((r) => r.currency === 'USD' && r.quoteCurrency === 'UAH')
-  const usdt = rates.find((r) => r.currency === 'USDT' && r.quoteCurrency === 'USD')
-  if (!usd || !usdt) return null
-  const buy = (usd.buy * usdt.buy).toFixed(2)
-  const sell = (usd.sell * usdt.sell).toFixed(2)
-  return `USDT/UAH ${buy} / <b>${sell}</b>`
+// A → B means "give A, receive B". Receiving the base costs the sell price;
+// giving the base gets you the buy price. USDT priced in USD needs 3dp; hryvnia pairs 2dp.
+function directions(base: string, quote: string, buy: number, sell: number): string[] {
+  const dp = quote === 'USD' ? 3 : 2
+  return [
+    `${SYM[quote]} → ${SYM[base]} ${sell.toFixed(dp)}`,
+    `${SYM[base]} → ${SYM[quote]} ${buy.toFixed(dp)}`,
+  ]
 }
 
 function formatMessage(env: Env, m: StoredMessage): string {
   const lines: string[] = [kyivDate(m.postedAt), '']
   if (m.status === 'parsed') {
-    for (const rate of m.rates) {
-      if (rate.currency === 'USDT' && rate.quoteCurrency === 'USD') continue
-      lines.push(formatRate(rate))
+    const usdUah = m.rates.find((r) => r.currency === 'USD' && r.quoteCurrency === 'UAH')
+    const usdtUsd = m.rates.find((r) => r.currency === 'USDT' && r.quoteCurrency === 'USD')
+    if (usdUah) lines.push(...directions('USD', 'UAH', usdUah.buy, usdUah.sell))
+    if (usdUah && usdtUsd) {
+      lines.push(...directions('USDT', 'UAH', usdUah.buy * usdtUsd.buy, usdUah.sell * usdtUsd.sell))
     }
-    const uah = usdtInHryvnia(m.rates)
-    if (uah) lines.push(uah)
+    if (usdtUsd) lines.push(...directions('USDT', 'USD', usdtUsd.buy, usdtUsd.sell))
   } else {
     const label = m.status === 'empty' ? 'Empty' : 'Failed'
     lines.push(`${label} <a href="${messageUrl(env, m.messageId)}">${m.messageId}</a>`)

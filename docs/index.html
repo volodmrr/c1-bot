@@ -22,7 +22,11 @@
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex; flex-direction: column; align-items: center;
   }
-  header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    flex-wrap: wrap; margin-bottom: 1rem; width: 100%; max-width: 640px;
+  }
+  .nav { display: flex; align-items: center; gap: 0.1rem; }
   h1 {
     font-size: 1.05rem; font-weight: 600; margin: 0; min-width: 9rem; text-align: center;
     cursor: pointer; border-radius: 8px; padding: .15rem .4rem;
@@ -42,25 +46,28 @@
   }
   .cell .day { font-size: .78rem; color: var(--muted); }
   .cell.has .day { color: var(--fg); }
-  .cell .rates { margin-top: auto; display: flex; flex-direction: column; gap: 1px; container-type: inline-size; overflow: hidden; }
+  .cell .rates { margin-top: auto; container-type: inline-size; overflow: hidden; }
   .cell .rate {
-    display: flex; justify-content: space-between; align-items: baseline; gap: .25rem;
-    font-size: .8rem; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums;
+    font-size: 1rem; font-weight: 600; color: var(--accent);
+    font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap;
   }
-  .cell .rate b { font-weight: 500; font-size: .74rem; color: var(--muted); }
   .cell.has { cursor: pointer; }
   @media (hover: hover) {
     .cell.has:hover { border-color: var(--accent); }
-    .cell.has:hover .pop { display: block; }
   }
   .cell.open { border-color: var(--accent); }
   .pop {
-    display: none; position: fixed; z-index: 5; bottom: 1.25rem; left: 50%;
-    transform: translateX(-50%); background: var(--cell); border: 1px solid var(--line);
+    position: fixed; z-index: 12; top: 0; left: 0;
+    background: var(--cell); border: 1px solid var(--line);
     border-radius: 12px; padding: .7rem .9rem; box-shadow: 0 6px 24px var(--shadow);
     white-space: nowrap; font-size: .88rem;
   }
-  .cell.open .pop { display: block; }
+  .pop-handle, .pop-close { display: none; }
+  .pop-close {
+    background: none; border: 0; color: var(--muted); font-size: 1.15rem;
+    width: 2rem; height: 2rem; padding: 0; cursor: pointer;
+    align-items: center; justify-content: center;
+  }
   .pop table { border-collapse: collapse; }
   .pop-day {
     font-size: .75rem; color: var(--muted); margin-bottom: .35rem;
@@ -83,6 +90,13 @@
   .picker-grid button { width: auto; height: 2.4rem; font-size: .8rem; border-radius: 8px; color: var(--muted); }
   .picker-grid button.has { color: var(--fg); font-weight: 600; }
   .picker-grid button.cur { border-color: var(--accent); color: var(--accent); }
+  .pairbar { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .8rem; }
+  .pairbar select {
+    background: var(--cell); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 8px; padding: .3rem .55rem; font: inherit; font-size: .9rem;
+    cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .pairbar select:hover { border-color: var(--accent); }
   [hidden] { display: none !important; }
 
   @media (max-width: 560px) {
@@ -93,8 +107,7 @@
     .cell { aspect-ratio: auto; min-height: 3.5rem; padding: .2rem .18rem; border-radius: 8px; }
     .cell .day { font-size: .68rem; }
     /* Type scales to the cell, which is far narrower than the viewport. */
-    .cell .rate { font-size: clamp(.5rem, 24cqw, .78rem); gap: .08rem; }
-    .cell .rate b { font-size: clamp(.48rem, 22cqw, .72rem); }
+    .cell .rate { font-size: clamp(.7rem, 34cqw, 1rem); }
     /* Both overlays become bottom sheets. */
     .pop, .picker {
       inset: auto 0 0 0; transform: none; width: auto;
@@ -103,6 +116,12 @@
     }
     .picker { padding-bottom: calc(.9rem + env(safe-area-inset-bottom)); }
     .pop { font-size: .95rem; padding: .9rem 1.1rem calc(.9rem + env(safe-area-inset-bottom)); }
+    .pop-handle {
+      display: block; width: 2.2rem; height: .25rem; border-radius: 3px;
+      background: var(--line); margin: 0 auto .6rem;
+    }
+    .pop-close { display: flex; position: absolute; top: .45rem; right: .55rem; }
+    .pop-day { margin-right: 2rem; }
     .pop table { width: 100%; }
     .pop td { padding: .25rem .5rem; }
     .picker-grid button { height: 2.8rem; }
@@ -112,9 +131,12 @@
 </head>
 <body>
 <header>
-  <button id="prev" aria-label="Previous month">‹</button>
-  <h1 id="title" role="button" tabindex="0" aria-label="Pick a month">—</h1>
-  <button id="next" aria-label="Next month">›</button>
+  <div class="nav">
+    <button id="prev" aria-label="Previous month">‹</button>
+    <h1 id="title" role="button" tabindex="0" aria-label="Pick a month">—</h1>
+    <button id="next" aria-label="Next month">›</button>
+  </div>
+  <div class="pairbar"><select id="pair" aria-label="Conversion direction"></select></div>
 </header>
 <div class="backdrop" id="backdrop" hidden></div>
 <div class="picker" id="picker" hidden>
@@ -125,9 +147,14 @@
   </div>
   <div class="picker-grid" id="pgrid"></div>
 </div>
+<div class="pop" id="pop" hidden>
+  <div class="pop-handle"></div>
+  <button class="pop-close" id="popclose" aria-label="Close">✕</button>
+  <div id="popbody"></div>
+</div>
 <div class="grid" id="dows"></div>
 <div class="grid" id="cal" style="margin-top:6px"></div>
-<footer>$ USD · ₮ USDT · cells show sell rate in UAH · popup shows buy / sell · times in Europe/Kyiv</footer>
+<footer>$ USD · ₴ UAH · ₮ USDT</footer>
 
 <script>
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -136,16 +163,18 @@ const fmt = (n, dp) => n == null ? "—" : n.toFixed(dp);
 const $ = (id) => document.getElementById(id);
 
 const elTitle = $("title"), elCal = $("cal"), elPicker = $("picker"),
-      elBackdrop = $("backdrop"), elPgrid = $("pgrid"), elPyear = $("pyear");
+      elBackdrop = $("backdrop"), elPgrid = $("pgrid"), elPyear = $("pyear"), elPair = $("pair"),
+      elPop = $("pop"), elPopBody = $("popbody");
 
 let data = {};
 let monthsByYear = new Map(); // year -> Set of month indexes with data
 let view; // {y, m}
 let openCell = null;
+let dir = 0; // selected DIRECTIONS index; default ₴ → $
 
 function render() {
   elTitle.textContent = `${MONTHS[view.m]} ${view.y}`;
-  openCell = null;
+  closePopups();
 
   const first = new Date(Date.UTC(view.y, view.m, 1));
   const lead = (first.getUTCDay() + 6) % 7; // Mon-based
@@ -161,32 +190,91 @@ function render() {
   elCal.replaceChildren(frag);
 }
 
-const rate = (sym, r) =>
-  r ? `<span class="rate"><b>${sym}</b>${fmt(r.sell, 2)}</span>` : "";
+// One value per cell, for the direction picked in the selector.
+function cellRates(rec) {
+  const d = DIRECTIONS[dir];
+  const r = rec[d.leg];
+  return `<span class="rate">${r ? fmt(r[d.side], d.dp) : "—"}</span>`;
+}
 
 function cell(day, rec) {
   const el = document.createElement("div");
   el.className = rec ? "cell has" : "cell";
-  el.innerHTML = `<span class="day">${day}</span>` + (rec
-    ? `<div class="rates">${rate("$", rec.usdUah)}${rate("₮", rec.usdtUah)}</div>` + popup(rec, day)
-    : "");
+  el.innerHTML = `<span class="day">${day}</span>` +
+    (rec ? `<div class="rates">${cellRates(rec)}</div>` : "");
+  if (rec) el.dataset.day = day;
   return el;
 }
 
 function closePopups() {
   if (openCell) { openCell.classList.remove("open"); openCell = null; }
+  elPop.hidden = true;
+  if (!pickerOpen) elBackdrop.hidden = true;
 }
 
-function row(label, r, dp) {
-  return r ? `<tr><td>${label}</td><td>${fmt(r.buy, dp)}</td><td>${fmt(r.sell, dp)}</td></tr>` : "";
+const SYM = { USD: "$", UAH: "₴", USDT: "₮" };
+
+// Cell rate options. leg = data.json field, side = buy|sell, dp = decimals. Order = give → get.
+const DIRECTIONS = [
+  { label: `${SYM.UAH} → ${SYM.USD}`, leg: "usdUah", side: "sell", dp: 2 },
+  { label: `${SYM.USD} → ${SYM.UAH}`, leg: "usdUah", side: "buy", dp: 2 },
+  { label: `${SYM.UAH} → ${SYM.USDT}`, leg: "usdtUah", side: "sell", dp: 2 },
+  { label: `${SYM.USDT} → ${SYM.UAH}`, leg: "usdtUah", side: "buy", dp: 2 },
+  { label: `${SYM.USD} → ${SYM.USDT}`, leg: "usdtUsd", side: "sell", dp: 3 },
+  { label: `${SYM.USDT} → ${SYM.USD}`, leg: "usdtUsd", side: "buy", dp: 3 },
+];
+
+// A → B: give A, receive B. Receiving the base costs sell; giving it gets buy.
+function dirs(base, quote, r, dp) {
+  if (!r) return "";
+  return `<tr><td>${SYM[quote]} → ${SYM[base]}</td><td>${fmt(r.sell, dp)}</td></tr>` +
+         `<tr><td>${SYM[base]} → ${SYM[quote]}</td><td>${fmt(r.buy, dp)}</td></tr>`;
 }
 
-function popup(rec, day) {
-  return `<div class="pop"><div class="pop-day">${day} ${MONTHS[view.m]} ${view.y}</div><table>
-    ${row("USD/UAH", rec.usdUah, 2)}
-    ${row("USDT/USD", rec.usdtUsd, 3)}
-    ${row("USDT/UAH", rec.usdtUah, 2)}
-  </table></div>`;
+function popupHTML(rec, day) {
+  return `<div class="pop-day">${day} ${MONTHS[view.m]} ${view.y}</div><table>
+    ${dirs("USD", "UAH", rec.usdUah, 2)}
+    ${dirs("USDT", "UAH", rec.usdtUah, 2)}
+    ${dirs("USDT", "USD", rec.usdtUsd, 3)}
+  </table>`;
+}
+
+const isMobile = () => window.matchMedia("(max-width: 560px)").matches;
+const canHover = () => window.matchMedia("(hover: hover)").matches;
+
+function openPopup(el) {
+  const day = +el.dataset.day;
+  const key = `${view.y}-${String(view.m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const rec = data[key];
+  if (!rec) return;
+  if (pickerOpen) togglePicker(false);
+  closePopups();
+  elPopBody.innerHTML = popupHTML(rec, day);
+  el.classList.add("open");
+  openCell = el;
+  elPop.hidden = false;
+  if (isMobile()) {
+    elPop.style.top = elPop.style.left = ""; // let the media query pin it as a bottom sheet
+    elBackdrop.hidden = false;
+  } else {
+    positionPopup(el);
+  }
+}
+
+// Anchor below the cell, flip above near the bottom, clamp to the viewport.
+function positionPopup(el) {
+  const r = el.getBoundingClientRect();
+  const M = 8, gap = 6;
+  const pw = elPop.offsetWidth, ph = elPop.offsetHeight;
+  let left = r.left + r.width / 2 - pw / 2;
+  left = Math.max(M, Math.min(left, window.innerWidth - pw - M));
+  let top = r.bottom + gap;
+  if (top + ph > window.innerHeight - M) {
+    const above = r.top - gap - ph;
+    top = above >= M ? above : Math.max(M, window.innerHeight - ph - M);
+  }
+  elPop.style.left = `${left}px`;
+  elPop.style.top = `${top}px`;
 }
 
 let pickerYear;
@@ -221,17 +309,27 @@ elCal.onclick = (e) => {
   const el = e.target.closest(".cell.has");
   if (!el) return;
   e.stopPropagation();
-  const wasOpen = el === openCell;
-  closePopups();
-  if (!wasOpen) { el.classList.add("open"); openCell = el; }
+  if (el === openCell) closePopups(); else openPopup(el);
 };
+elCal.addEventListener("mouseover", (e) => {
+  if (pickerOpen || !canHover() || isMobile()) return;
+  const el = e.target.closest(".cell.has");
+  if (el && el !== openCell) openPopup(el);
+});
+elCal.addEventListener("mouseout", (e) => {
+  if (!canHover() || isMobile()) return;
+  const el = e.target.closest(".cell.has");
+  if (el && el === openCell && !el.contains(e.relatedTarget)) closePopups();
+});
 $("prev").onclick = () => step(-1);
 $("next").onclick = () => step(1);
 
 elTitle.onclick = (e) => { e.stopPropagation(); togglePicker(!pickerOpen); };
 elTitle.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elTitle.onclick(e); } };
-elBackdrop.onclick = () => togglePicker(false);
+elBackdrop.onclick = () => { togglePicker(false); closePopups(); };
 elPicker.onclick = (e) => e.stopPropagation();
+elPop.onclick = (e) => e.stopPropagation();
+$("popclose").onclick = closePopups;
 $("yprev").onclick = () => { pickerYear--; renderPicker(); };
 $("ynext").onclick = () => { pickerYear++; renderPicker(); };
 elPgrid.onclick = (e) => {
@@ -241,8 +339,19 @@ elPgrid.onclick = (e) => {
   togglePicker(false);
   render();
 };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") togglePicker(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { togglePicker(false); closePopups(); } });
 $("dows").innerHTML = DOW.map((d) => `<div class="dow">${d}</div>`).join("");
+
+let saved = NaN;
+try { saved = +localStorage.getItem("dir"); } catch {}
+if (Number.isInteger(saved) && saved >= 0 && saved < DIRECTIONS.length) dir = saved;
+elPair.innerHTML = DIRECTIONS.map((d, i) => `<option value="${i}">${d.label}</option>`).join("");
+elPair.value = String(dir);
+elPair.onchange = () => {
+  dir = +elPair.value;
+  try { localStorage.setItem("dir", dir); } catch {}
+  render();
+};
 
 fetch("data.json")
   .then((r) => r.json())
