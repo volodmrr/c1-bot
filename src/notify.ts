@@ -5,25 +5,25 @@ import { kyivDate } from './date'
 const SYM: Record<string, string> = { USD: '$', UAH: '₴', USDT: '₮' }
 
 // A → B means "give A, receive B". Receiving the base costs the sell price;
-// giving the base gets you the buy price. USDT priced in USD needs 3dp; hryvnia pairs 2dp.
-function directions(base: string, quote: string, buy: number, sell: number): string[] {
+// giving the base gets you the buy price. Both directions on one monospace line,
+// split by ·. USDT priced in USD needs 3dp; hryvnia pairs 2dp.
+function pairLine(base: string, quote: string, buy: number, sell: number): string {
   const dp = quote === 'USD' ? 3 : 2
-  return [
-    `${SYM[quote]} → ${SYM[base]} ${sell.toFixed(dp)}`,
-    `${SYM[base]} → ${SYM[quote]} ${buy.toFixed(dp)}`,
-  ]
+  const receive = `${SYM[quote]} → ${SYM[base]} ${sell.toFixed(dp)}`
+  const give = `${SYM[base]} → ${SYM[quote]} ${buy.toFixed(dp)}`
+  return `<code>${receive} · ${give}</code>`
 }
 
 function formatMessage(env: Env, m: StoredMessage): string {
-  const lines: string[] = [kyivDate(m.postedAt), '']
+  const lines: string[] = [`<code>${kyivDate(m.postedAt)}</code>`, '']
   if (m.status === 'parsed') {
     const usdUah = m.rates.find((r) => r.currency === 'USD' && r.quoteCurrency === 'UAH')
     const usdtUsd = m.rates.find((r) => r.currency === 'USDT' && r.quoteCurrency === 'USD')
-    if (usdUah) lines.push(...directions('USD', 'UAH', usdUah.buy, usdUah.sell))
+    if (usdUah) lines.push(pairLine('USD', 'UAH', usdUah.buy, usdUah.sell))
     if (usdUah && usdtUsd) {
-      lines.push(...directions('USDT', 'UAH', usdUah.buy * usdtUsd.buy, usdUah.sell * usdtUsd.sell))
+      lines.push(pairLine('USDT', 'UAH', usdUah.buy * usdtUsd.buy, usdUah.sell * usdtUsd.sell))
     }
-    if (usdtUsd) lines.push(...directions('USDT', 'USD', usdtUsd.buy, usdtUsd.sell))
+    if (usdtUsd) lines.push(pairLine('USDT', 'USD', usdtUsd.buy, usdtUsd.sell))
   } else {
     const label = m.status === 'empty' ? 'Empty' : 'Failed'
     lines.push(`${label} <a href="${messageUrl(env, m.messageId)}">${m.messageId}</a>`)
