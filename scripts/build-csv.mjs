@@ -38,7 +38,7 @@ for (const f of readdirSync(RATES_DIR)) {
 }
 
 const rows = Object.keys(byDate)
-  .sort((a, b) => a.localeCompare(b))
+  .sort((a, b) => b.localeCompare(a)) // newest day first
   .map((d) => `${d},${byDate[d].uah},${byDate[d].usdt}`);
 
 mkdirSync(OUT_DIR, { recursive: true });
