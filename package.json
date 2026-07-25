@@ -6,6 +6,7 @@
     "typecheck": "tsc --noEmit",
     "convert": "node scripts/convert.mjs",
     "build:site": "node scripts/build-site.mjs",
+    "build:csv": "node scripts/build-csv.mjs",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {

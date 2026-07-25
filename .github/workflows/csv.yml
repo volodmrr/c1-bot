@@ -1,0 +1,40 @@
+name: build csv
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/rates/**"
+      - "scripts/build-csv.mjs"
+      - ".github/workflows/csv.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One build at a time; the trigger paths (data/rates) and the commit
+# target (data/google) are disjoint, so committing back never re-triggers.
+concurrency:
+  group: build-csv
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/build-csv.mjs
+      - name: Commit CSV if changed
+        run: |
+          if [[ -n "$(git status --porcelain data/google)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/google
+            git commit -m "csv: buy-usd.csv"
+            git push
+          else
+            echo "no CSV changes"
+          fi
