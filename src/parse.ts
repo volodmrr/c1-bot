@@ -1,7 +1,7 @@
 import type { Currency, Env, ParsedRate, QuoteCurrency } from './types'
 
-// Haiku suffices; the schema does the structural work (verified 42/42 vs Opus).
-const MODEL = 'claude-haiku-4-5'
+// Haiku suffices; the schema does the structural work (verified 42/42 vs Opus on Haiku 4.5).
+const MODEL = 'claude-haiku-5-5'
 
 // fetch, not the SDK: its per-cold-start module-eval can trip the Worker CPU limit.
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
@@ -79,9 +79,11 @@ export async function parseMessage(
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 2048,
+        // Haiku 5.5 thinks by default and thinking counts toward max_tokens: keep effort low
+        // (simple extraction) and leave headroom so the JSON isn't truncated.
+        max_tokens: 8192,
         system: SYSTEM_PROMPT,
-        output_config: { format: { type: 'json_schema', schema: RATE_SCHEMA } },
+        output_config: { effort: 'low', format: { type: 'json_schema', schema: RATE_SCHEMA } },
         messages: [{ role: 'user', content: rawText }],
       }),
     })
