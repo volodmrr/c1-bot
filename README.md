@@ -15,7 +15,6 @@ npx wrangler secret put CHANNEL        # Telegram channel username, no @
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put TELEGRAM_BOT_TOKEN
 npx wrangler secret put OWNER_CHAT_ID
-npx wrangler secret put PUBLIC_CHAT_ID
 npx wrangler secret put GITHUB_TOKEN   # fine-grained PAT, Contents: read+write on this repo
 
 npm run deploy

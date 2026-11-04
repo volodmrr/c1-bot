@@ -29,6 +29,5 @@ export interface Env {
   ANTHROPIC_API_KEY: string
   TELEGRAM_BOT_TOKEN: string
   OWNER_CHAT_ID: string
-  PUBLIC_CHAT_ID: string
   GITHUB_TOKEN: string
 }
